@@ -1,0 +1,24 @@
+{
+  "name": "Garage",
+
+  "inputs": [17, 18, 23],
+
+  "outputs": [22, 24],
+
+  "aliases": {
+    "22": "door",
+    "24": "light"
+  },
+
+  "sensors": {
+
+    "distance": {
+      "mode": "ramp",
+      "min": 10,
+      "max": 400,
+      "interval": 1,
+      "unit": "cm",
+      "pin": 17
+    }
+  }
+}

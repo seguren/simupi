@@ -1,0 +1,35 @@
+{
+  "name": "Smart Home",
+
+  "inputs": [17, 18, 23],
+
+  "outputs": [22, 24, 25],
+
+  "aliases": {
+    "22": "living_light",
+    "24": "heater",
+    "25": "alarm"
+  },
+
+  "sensors": {
+
+    "temperature": {
+      "mode": "wave",
+      "min": 18,
+      "max": 30,
+      "interval": 1,
+      "period": 60,
+      "unit": "°C",
+      "pin": 4
+    },
+
+    "power": {
+      "mode": "random",
+      "min": 100,
+      "max": 2500,
+      "interval": 1,
+      "unit": "W",
+      "pin": 2
+    }
+  }
+}

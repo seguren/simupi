@@ -1,0 +1,35 @@
+{
+  "name": "Greenhouse",
+
+  "inputs": [17, 18],
+
+  "outputs": [22, 24],
+
+  "aliases": {
+    "22": "fan",
+    "24": "pump"
+  },
+
+  "sensors": {
+
+    "temperature": {
+      "mode": "wave",
+      "min": 15,
+      "max": 40,
+      "interval": 1,
+      "period": 60,
+      "unit": "°C",
+      "pin": 4
+    },
+
+    "humidity": {
+      "mode": "walk",
+      "min": 30,
+      "max": 90,
+      "interval": 1,
+      "step": 2,
+      "unit": "%",
+      "pin": 4
+    }
+  }
+}

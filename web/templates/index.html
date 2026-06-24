@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SimuPi — Raspberry Pi Simulator</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+    <div class="topbar-brand">
+        <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2"/>
+            <path d="M8 21h8M12 17v4"/>
+        </svg>
+        <span class="brand-name">SimuPi</span>
+    </div>
+    <div class="topbar-controls">
+        <label class="topbar-label" for="scenario-select">Escenario</label>
+        <select id="scenario-select" class="scenario-select"></select>
+        <span class="scenario-active-badge" id="scenario-name">—</span>
+        <button id="btn-open-config" class="btn-config">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            Configuración
+        </button>
+    </div>
+</header>
+
+<main class="container">
+
+    <!-- GPIO + Sensors -->
+    <div class="main-grid">
+        <div class="col-gpio">
+            <section class="card">
+                <h2 class="card-title">
+                    <span class="title-dot dot-blue"></span>
+                    GPIO Inputs
+                </h2>
+                <div id="gpio-inputs" class="gpio-list"></div>
+            </section>
+            <section class="card">
+                <h2 class="card-title">
+                    <span class="title-dot dot-green"></span>
+                    GPIO Outputs
+                </h2>
+                <div id="gpio-outputs" class="gpio-list"></div>
+            </section>
+        </div>
+
+        <section class="card">
+            <h2 class="card-title">
+                <span class="title-dot dot-orange"></span>
+                Sensores
+            </h2>
+            <div id="sensors" class="sensor-grid"></div>
+        </section>
+    </div>
+
+    <!-- Tabs: Histórico / Estado -->
+    <div class="card tab-card">
+        <div class="tab-bar">
+            <button class="tab-btn active" data-tab="history">Histórico</button>
+            <button class="tab-btn" data-tab="mqtt">Topics MQTT</button>
+            <button class="tab-btn" data-tab="estado">Estado del sistema</button>
+        </div>
+
+        <div id="tab-history" class="tab-panel active tab-body">
+            <div class="chart-header">
+                <select id="chart-sensor" class="chart-sensor-select"></select>
+            </div>
+            <div class="chart-wrap">
+                <canvas id="sensorChart"></canvas>
+            </div>
+        </div>
+
+        <div id="tab-mqtt" class="tab-panel tab-body">
+            <div id="mqtt-topics"></div>
+        </div>
+
+        <div id="tab-estado" class="tab-panel tab-body">
+            <pre id="status" class="state-pre"></pre>
+        </div>
+    </div>
+
+</main>
+
+<!-- Config Modal -->
+<div id="config-modal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-labelledby="modal-title">
+
+        <div class="modal-header">
+            <h2 class="modal-title" id="modal-title">Configuración</h2>
+            <button id="btn-close-modal" class="modal-close" aria-label="Cerrar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="modal-body">
+            <p class="config-hint">
+                Editá el JSON para modificar sensores y aliases.
+                Los pines GPIO del escenario activo se conservan.
+            </p>
+            <textarea id="config-textarea" spellcheck="false"></textarea>
+        </div>
+
+        <div class="modal-footer">
+            <div class="modal-actions">
+                <button id="btn-apply-config" class="btn btn-primary">Aplicar</button>
+                <div class="config-save-group">
+                    <input id="cfg-save-name" type="text" class="save-name-input" placeholder="nombre-escenario">
+                    <button id="btn-save-config" class="btn btn-secondary">Guardar como escenario</button>
+                </div>
+            </div>
+            <p id="config-msg" class="config-msg"></p>
+        </div>
+
+    </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
