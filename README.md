@@ -46,9 +46,8 @@ El directorio `docs/` contiene el tutorial completo para alumnos:
 
 | Archivo | Contenido |
 |---------|-----------|
-| [`docs/tutorial_simupi_nodered.html`](docs/tutorial_simupi_nodered.html) | Tutorial paso a paso: uso del simulador, integración con Node-RED y 4 ejercicios prácticos |
-
-Para generar el PDF: abrí el archivo en el navegador → **Imprimir → Guardar como PDF** (activar "Gráficos de fondo").
+| [`docs/Manual_de_usuario_SimuPi.pdf`](docs/Manual_de_usuario_SimuPi.pdf) | Manual de usuario completo en PDF — listo para distribuir a los alumnos |
+| [`docs/tutorial_simupi_nodered.html`](docs/tutorial_simupi_nodered.html) | Fuente HTML del tutorial (abrir en browser → Imprimir → Guardar como PDF para regenerarlo) |
 
 ---
 
@@ -111,7 +110,8 @@ simupi-go/
 │   ├── simupi-linux-amd64
 │   └── simupi-windows-amd64.exe
 ├── docs/                     # Documentación para alumnos
-│   └── tutorial_simupi_nodered.html
+│   ├── Manual_de_usuario_SimuPi.pdf  # Manual listo para distribuir
+│   └── tutorial_simupi_nodered.html  # Fuente HTML del manual
 ├── web/
 │   ├── static/
 │   │   ├── app.js            # Frontend (embebido en el binario)
