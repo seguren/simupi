@@ -174,20 +174,29 @@ function renderSensors(state) {
 
     const container = document.getElementById("sensors");
     container.innerHTML = "";
-    const failures = state.failures || {};
-    const units    = state.sensor_units || {};
-    const modes    = state.sensor_modes || {};
-    const pins     = state.sensor_pins  || {};
+    const failures  = state.failures      || {};
+    const units     = state.sensor_units  || {};
+    const modes     = state.sensor_modes  || {};
+    const pins      = state.sensor_pins   || {};
+    const limits    = state.sensor_limits || {};
+    const overrides = state.overrides     || {};
 
     Object.entries(state.sensors).forEach(([sensor, value]) => {
         const unit        = units[sensor] || "";
         const mode        = modes[sensor] || "";
         const pin         = pins[sensor];
         const failureMode = (failures[sensor] || {}).mode;
+        const isSlider    = mode === "slider";
+        const hasOverride = overrides[sensor] !== undefined;
+
+        let cardClass = "sensor-card";
+        if (failureMode)  cardClass += ` failure-${failureMode}`;
+        if (hasOverride)  cardClass += " has-override";
 
         const card = document.createElement("div");
-        card.className = "sensor-card" + (failureMode ? ` failure-${failureMode}` : "");
+        card.className = cardClass;
 
+        // ── Header ──────────────────────────────────────────
         const header = document.createElement("div");
         header.className = "sensor-card-header";
 
@@ -196,7 +205,7 @@ function renderSensors(state) {
         name.textContent = sensor;
 
         const modeBadge = document.createElement("span");
-        modeBadge.className = "mode-badge";
+        modeBadge.className = "mode-badge" + (isSlider ? " mode-badge-slider" : "");
         modeBadge.textContent = mode;
 
         header.appendChild(name);
@@ -210,6 +219,13 @@ function renderSensors(state) {
             header.appendChild(pinBadge);
         }
 
+        if (hasOverride) {
+            const ob = document.createElement("span");
+            ob.className = "override-badge";
+            ob.textContent = "fijado";
+            header.appendChild(ob);
+        }
+
         if (failureMode) {
             const fb = document.createElement("span");
             fb.className = `failure-badge ${failureMode}`;
@@ -217,6 +233,7 @@ function renderSensors(state) {
             header.appendChild(fb);
         }
 
+        // ── Value row ────────────────────────────────────────
         const valueRow = document.createElement("div");
         valueRow.className = "sensor-value-row";
 
@@ -231,26 +248,72 @@ function renderSensors(state) {
         valueRow.appendChild(val);
         valueRow.appendChild(unitSpan);
 
-        const override = document.createElement("div");
-        override.className = "sensor-override";
-
-        const input = document.createElement("input");
-        input.id = `sensor_${sensor}`;
-        input.type = "number";
-        input.step = "0.1";
-        input.value = value;
-
-        const setBtn = document.createElement("button");
-        setBtn.className = "btn-set";
-        setBtn.textContent = "Fijar";
-        setBtn.addEventListener("click", () => setSensor(sensor));
-
-        override.appendChild(input);
-        override.appendChild(setBtn);
-
         card.appendChild(header);
         card.appendChild(valueRow);
-        card.appendChild(override);
+
+        // ── Controls ─────────────────────────────────────────
+        if (isSlider) {
+            const lim = limits[sensor] || { min: 0, max: 100 };
+            const step = (lim.max - lim.min) >= 100 ? 1 : 0.1;
+
+            const sliderWrap = document.createElement("div");
+            sliderWrap.className = "sensor-slider-wrap";
+
+            const sliderInput = document.createElement("input");
+            sliderInput.type  = "range";
+            sliderInput.className = "sensor-slider";
+            sliderInput.min   = lim.min;
+            sliderInput.max   = lim.max;
+            sliderInput.step  = step;
+            sliderInput.value = value;
+
+            // Update display live while dragging
+            sliderInput.addEventListener("input", () => {
+                val.textContent = parseFloat(sliderInput.value).toFixed(2);
+            });
+            // Send to API on release
+            sliderInput.addEventListener("change", () => {
+                setSensor(sensor, parseFloat(sliderInput.value));
+            });
+
+            sliderWrap.appendChild(sliderInput);
+
+            const sliderLabels = document.createElement("div");
+            sliderLabels.className = "sensor-slider-labels";
+            sliderLabels.innerHTML =
+                `<span>${lim.min} ${unit}</span><span>${lim.max} ${unit}</span>`;
+            sliderWrap.appendChild(sliderLabels);
+
+            card.appendChild(sliderWrap);
+        } else {
+            const overrideRow = document.createElement("div");
+            overrideRow.className = "sensor-override";
+
+            const input = document.createElement("input");
+            input.id    = `sensor_${sensor}`;
+            input.type  = "number";
+            input.step  = "0.1";
+            input.value = value;
+
+            const setBtn = document.createElement("button");
+            setBtn.className = "btn-set";
+            setBtn.textContent = "Fijar";
+            setBtn.addEventListener("click", () => setSensor(sensor));
+
+            overrideRow.appendChild(input);
+            overrideRow.appendChild(setBtn);
+
+            if (hasOverride) {
+                const clearBtn = document.createElement("button");
+                clearBtn.className = "btn-release";
+                clearBtn.textContent = "Liberar";
+                clearBtn.addEventListener("click", () => clearSensorOverride(sensor));
+                overrideRow.appendChild(clearBtn);
+            }
+
+            card.appendChild(overrideRow);
+        }
+
         container.appendChild(card);
     });
 }
@@ -381,13 +444,20 @@ async function toggleGPIO(pin) {
     loadState();
 }
 
-async function setSensor(sensor) {
-    const value = document.getElementById(`sensor_${sensor}`).value;
+async function setSensor(sensor, explicitValue) {
+    const value = explicitValue !== undefined
+        ? explicitValue
+        : document.getElementById(`sensor_${sensor}`).value;
     await fetch(`/api/sensor/${sensor}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ value })
+        body: JSON.stringify({ value: parseFloat(value) })
     });
+    loadState();
+}
+
+async function clearSensorOverride(sensor) {
+    await fetch(`/api/sensor/${sensor}`, { method: "DELETE" });
     loadState();
 }
 

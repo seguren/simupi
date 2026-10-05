@@ -29,6 +29,7 @@ type SensorEngine struct {
 
 	mu        sync.RWMutex
 	values    map[string]float64
+	overrides map[string]float64 // manual overrides bypass the algorithm
 	failures  map[string]config.FailureMode
 	rampDir   map[string]int // +1 ascending, -1 descending
 
@@ -43,12 +44,17 @@ func NewSensorEngine(cfg map[string]config.SensorConfig, pub Publisher, hist His
 		publisher: pub,
 		history:   hist,
 		values:    make(map[string]float64, len(cfg)),
+		overrides: make(map[string]float64),
 		failures:  make(map[string]config.FailureMode),
 		rampDir:   make(map[string]int),
 		startTime: time.Now(),
 	}
 	for name, c := range cfg {
-		e.values[name] = c.Min
+		if c.Mode == "slider" {
+			e.values[name] = (c.Min + c.Max) / 2
+		} else {
+			e.values[name] = c.Min
+		}
 		e.rampDir[name] = 1
 	}
 	return e
@@ -93,6 +99,9 @@ func (e *SensorEngine) runSensor(ctx context.Context, name string, cfg config.Se
 			}
 			if failure.Mode == "stuck" {
 				value = e.values[name]
+			} else if ov, hasOverride := e.overrides[name]; hasOverride {
+				value = ov
+				e.values[name] = value
 			} else {
 				value = e.computeLocked(name, cfg)
 				e.values[name] = value
@@ -185,6 +194,9 @@ func (e *SensorEngine) computeLocked(name string, cfg config.SensorConfig) float
 		phase := math.Mod(elapsed, period) / period
 		return cfg.Min + (cfg.Max-cfg.Min)*phase
 
+	case "slider":
+		return e.values[name]
+
 	default: // random
 		return cfg.Min + rand.Float64()*(cfg.Max-cfg.Min)
 	}
@@ -211,6 +223,42 @@ func (e *SensorEngine) SetValue(name string, value float64) {
 	defer e.mu.Unlock()
 	if _, ok := e.values[name]; ok {
 		e.values[name] = value
+	}
+}
+
+func (e *SensorEngine) SetOverride(name string, value float64) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if _, ok := e.values[name]; ok {
+		e.overrides[name] = value
+		e.values[name] = value
+	}
+}
+
+func (e *SensorEngine) ClearOverride(name string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	delete(e.overrides, name)
+}
+
+func (e *SensorEngine) GetOverrides() map[string]float64 {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	out := make(map[string]float64, len(e.overrides))
+	for k, v := range e.overrides {
+		out[k] = v
+	}
+	return out
+}
+
+func (e *SensorEngine) RestoreOverrides(overrides map[string]float64) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	for name, value := range overrides {
+		if _, ok := e.values[name]; ok {
+			e.overrides[name] = value
+			e.values[name] = value
+		}
 	}
 }
 

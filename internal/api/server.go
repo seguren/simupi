@@ -70,6 +70,7 @@ func (s *Server) Init(defaultScenario string) error {
 	} else if state != nil {
 		s.gpio.Restore(state.GPIOInputs, state.GPIOOutputs)
 		s.engine.Restore(state.Sensors)
+		s.engine.RestoreOverrides(state.Overrides)
 	}
 
 	s.mqttClient.SetGPIO(s.gpio)
@@ -97,6 +98,7 @@ func (s *Server) autosave() {
 			Sensors:     e.GetValues(),
 			Scenario:    sc,
 			Failures:    e.GetFailures(),
+			Overrides:   e.GetOverrides(),
 		}
 		if err := config.SaveState(state); err != nil {
 			log.Printf("autosave: %v", err)
@@ -127,6 +129,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/gpio/{pin}/pulse", s.handleGPIOPulse)
 
 	mux.HandleFunc("POST /api/sensor/{name}", s.handleSetSensor)
+	mux.HandleFunc("DELETE /api/sensor/{name}", s.handleClearSensorOverride)
 	mux.HandleFunc("POST /api/failure/{sensor}", s.handleFailure)
 
 	mux.HandleFunc("GET /api/history", s.handleAllHistory)
@@ -160,12 +163,14 @@ func (s *Server) handleState(w http.ResponseWriter, _ *http.Request) {
 	failures := e.GetFailures()
 	cfg := e.Config()
 
-	sensorUnits := make(map[string]string, len(cfg))
-	sensorModes := make(map[string]string, len(cfg))
-	sensorPins := make(map[string]int)
+	sensorUnits  := make(map[string]string, len(cfg))
+	sensorModes  := make(map[string]string, len(cfg))
+	sensorPins   := make(map[string]int)
+	sensorLimits := make(map[string]map[string]float64, len(cfg))
 	for name, c := range cfg {
 		sensorUnits[name] = c.Unit
 		sensorModes[name] = c.Mode
+		sensorLimits[name] = map[string]float64{"min": c.Min, "max": c.Max}
 		if c.Pin != nil {
 			sensorPins[name] = *c.Pin
 		}
@@ -177,15 +182,17 @@ func (s *Server) handleState(w http.ResponseWriter, _ *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"gpio_inputs":  inputs,
-		"gpio_outputs": outputs,
-		"sensors":      rounded,
-		"sensor_units": sensorUnits,
-		"sensor_modes": sensorModes,
-		"sensor_pins":  sensorPins,
-		"aliases":      aliases,
-		"scenario":     sc,
-		"failures":     failures,
+		"gpio_inputs":   inputs,
+		"gpio_outputs":  outputs,
+		"sensors":       rounded,
+		"sensor_units":  sensorUnits,
+		"sensor_modes":  sensorModes,
+		"sensor_pins":   sensorPins,
+		"sensor_limits": sensorLimits,
+		"aliases":       aliases,
+		"scenario":      sc,
+		"failures":      failures,
+		"overrides":     e.GetOverrides(),
 	})
 }
 
@@ -348,7 +355,8 @@ func (s *Server) handleSetSensor(w http.ResponseWriter, r *http.Request) {
 	e := s.engine
 	s.mu.RUnlock()
 
-	if _, ok := e.Config()[name]; !ok {
+	cfg, ok := e.Config()[name]
+	if !ok {
 		writeError(w, http.StatusBadRequest, fmt.Sprintf("sensor %q not configured", name))
 		return
 	}
@@ -362,7 +370,27 @@ func (s *Server) handleSetSensor(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "value must be a number")
 		return
 	}
-	e.SetValue(name, fv)
+	// Slider mode is always user-controlled: just update the stored value.
+	// All other modes use an override that bypasses the algorithm.
+	if cfg.Mode == "slider" {
+		e.SetValue(name, fv)
+	} else {
+		e.SetOverride(name, fv)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true})
+}
+
+func (s *Server) handleClearSensorOverride(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	s.mu.RLock()
+	e := s.engine
+	s.mu.RUnlock()
+
+	if _, ok := e.Config()[name]; !ok {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("sensor %q not configured", name))
+		return
+	}
+	e.ClearOverride(name)
 	writeJSON(w, http.StatusOK, map[string]any{"success": true})
 }
 
@@ -450,7 +478,7 @@ func buildScenario(payload map[string]any, name string) (*config.Scenario, error
 		}
 		validModes := map[string]bool{
 			"random": true, "wave": true, "ramp": true, "walk": true,
-			"square": true, "triangle": true, "sawtooth": true,
+			"square": true, "triangle": true, "sawtooth": true, "slider": true,
 		}
 		if !validModes[cfg.Mode] {
 			return nil, fmt.Errorf("sensor %q: invalid mode %q", sname, cfg.Mode)

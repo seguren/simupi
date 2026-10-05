@@ -712,3 +712,63 @@ body {
 }
 .btn-copy:hover  { border-color: var(--accent); color: var(--accent); }
 .btn-copy.copied { border-color: var(--on); color: var(--on); }
+
+/* =====================================================
+   Sensor override state
+   ===================================================== */
+.sensor-card.has-override {
+    border-color: var(--orange);
+    background: rgba(239,108,0,0.03);
+}
+
+.override-badge {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 7px;
+    border-radius: 20px;
+    font-weight: 700;
+    background: var(--orange);
+    color: #fff;
+}
+
+.btn-release {
+    padding: 4px 12px;
+    font-size: 0.78rem;
+    border: 1px solid var(--orange);
+    background: transparent;
+    color: var(--orange);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background var(--transition), color var(--transition);
+    white-space: nowrap;
+}
+.btn-release:hover { background: var(--orange); color: #fff; }
+
+/* =====================================================
+   Slider mode
+   ===================================================== */
+.mode-badge-slider {
+    background: #e8f5e9;
+    color: var(--on);
+}
+
+.sensor-slider-wrap {
+    margin-top: 8px;
+}
+
+.sensor-slider {
+    width: 100%;
+    height: 6px;
+    accent-color: var(--primary);
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+.sensor-slider-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}

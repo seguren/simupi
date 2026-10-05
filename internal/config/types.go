@@ -33,7 +33,7 @@ func (s *Scenario) Validate() error {
 	}
 	validModes := map[string]bool{
 		"random": true, "wave": true, "ramp": true, "walk": true,
-		"square": true, "triangle": true, "sawtooth": true,
+		"square": true, "triangle": true, "sawtooth": true, "slider": true,
 	}
 	for name, cfg := range s.Sensors {
 		if !validModes[cfg.Mode] {
@@ -58,4 +58,5 @@ type AppState struct {
 	Sensors     map[string]float64     `json:"sensors"`
 	Scenario    string                 `json:"scenario"`
 	Failures    map[string]FailureMode `json:"failures"`
+	Overrides   map[string]float64     `json:"overrides,omitempty"`
 }

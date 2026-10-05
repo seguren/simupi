@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SimuPi + Node-RED — Tutorial de Laboratorio</title>
+  <style>
+    /* ── RESET & BASE ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 11pt; }
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: #1a1a2e;
+      background: #ffffff;
+      line-height: 1.6;
+    }
+
+    /* ── PRINT ── */
+    @media print {
+      .no-print { display: none; }
+      body { font-size: 10pt; }
+      .page-break { page-break-before: always; }
+      .cover { page-break-after: always; }
+      section { page-break-inside: avoid; }
+      pre, .code-block { page-break-inside: avoid; }
+    }
+
+    /* ── LAYOUT ── */
+    .container { max-width: 850px; margin: 0 auto; padding: 0 2rem 4rem; }
+
+    /* ── COVER ── */
+    .cover {
+      background: linear-gradient(135deg, #0f3460 0%, #16213e 60%, #e94560 100%);
+      color: #fff;
+      text-align: center;
+      padding: 80px 40px 60px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    .cover .badge {
+      background: rgba(255,255,255,.15);
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: 20px;
+      padding: 5px 18px;
+      font-size: 9pt;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+    .cover h1 {
+      font-size: 44pt;
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1.1;
+      margin-bottom: 8px;
+    }
+    .cover .subtitle {
+      font-size: 18pt;
+      font-weight: 300;
+      opacity: .85;
+      margin-bottom: 36px;
+    }
+    .cover .divider {
+      width: 80px; height: 4px;
+      background: #e94560;
+      border-radius: 2px;
+      margin: 0 auto 36px;
+    }
+    .cover .meta { font-size: 11pt; opacity: .75; line-height: 2; }
+    .cover .meta strong { opacity: 1; }
+
+    /* ── TOC ── */
+    .toc-page { padding: 60px 0 40px; }
+    .toc-page h2 { font-size: 22pt; color: #0f3460; margin-bottom: 28px; border-bottom: 3px solid #e94560; padding-bottom: 8px; }
+    .toc-list { list-style: none; }
+    .toc-list li {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      padding: 6px 0;
+      border-bottom: 1px dotted #ccc;
+      font-size: 10.5pt;
+    }
+    .toc-list li .num { color: #e94560; font-weight: 700; min-width: 24px; }
+    .toc-list li .dots { flex: 1; border-bottom: 1px dotted #aaa; margin: 0 4px 4px; }
+    .toc-list li .pg { color: #666; min-width: 20px; text-align: right; }
+    .toc-list .sub { padding-left: 20px; font-size: 10pt; color: #444; }
+
+    /* ── SECTION HEADERS ── */
+    .section-header {
+      background: linear-gradient(90deg, #0f3460, #16213e);
+      color: #fff;
+      padding: 18px 28px;
+      border-radius: 8px 8px 0 0;
+      margin-top: 48px;
+      margin-bottom: 0;
+    }
+    .section-header .sec-num {
+      display: inline-block;
+      background: #e94560;
+      color: #fff;
+      font-size: 8pt;
+      font-weight: 700;
+      padding: 2px 9px;
+      border-radius: 10px;
+      margin-right: 10px;
+      letter-spacing: 1px;
+    }
+    .section-header h2 { display: inline; font-size: 15pt; font-weight: 700; }
+
+    .section-body {
+      border: 1px solid #dde;
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      padding: 24px 28px;
+      margin-bottom: 8px;
+    }
+
+    /* ── TYPOGRAPHY ── */
+    h3 { font-size: 12.5pt; color: #0f3460; margin: 24px 0 10px; }
+    h4 { font-size: 11pt; color: #16213e; margin: 18px 0 8px; font-weight: 600; }
+    p  { margin-bottom: 10px; }
+    ul, ol { margin: 8px 0 12px 22px; }
+    li { margin-bottom: 4px; }
+    strong { color: #0f3460; }
+    em { color: #555; }
+
+    /* ── INFO BOXES ── */
+    .box {
+      border-left: 5px solid;
+      padding: 12px 18px;
+      border-radius: 0 6px 6px 0;
+      margin: 16px 0;
+      font-size: 10pt;
+    }
+    .box-info    { border-color: #2196f3; background: #e3f2fd; }
+    .box-warning { border-color: #ff9800; background: #fff3e0; }
+    .box-tip     { border-color: #4caf50; background: #e8f5e9; }
+    .box-danger  { border-color: #e94560; background: #fce4ec; }
+    .box-title { font-weight: 700; margin-bottom: 4px; text-transform: uppercase; font-size: 9pt; letter-spacing: 1px; }
+    .box-info    .box-title { color: #1565c0; }
+    .box-warning .box-title { color: #e65100; }
+    .box-tip     .box-title { color: #2e7d32; }
+    .box-danger  .box-title { color: #b71c1c; }
+
+    /* ── CODE ── */
+    code {
+      font-family: "Cascadia Code", "Consolas", monospace;
+      font-size: 9.5pt;
+      background: #f0f4f8;
+      border: 1px solid #d0dae4;
+      border-radius: 3px;
+      padding: 1px 5px;
+      color: #c0392b;
+    }
+    pre {
+      background: #1a1a2e;
+      color: #e0e0e0;
+      border-radius: 6px;
+      padding: 16px 18px;
+      overflow-x: auto;
+      font-family: "Cascadia Code", "Consolas", monospace;
+      font-size: 9pt;
+      line-height: 1.55;
+      margin: 12px 0;
+    }
+    pre code {
+      background: none;
+      border: none;
+      color: inherit;
+      padding: 0;
+      font-size: inherit;
+    }
+    .kw  { color: #82aaff; }  /* keyword */
+    .st  { color: #c3e88d; }  /* string */
+    .cm  { color: #546e7a; font-style: italic; }  /* comment */
+    .nm  { color: #f78c6c; }  /* number */
+    .fn  { color: #82aaff; }  /* function */
+    .tp  { color: #ffcb6b; }  /* topic/key */
+
+    /* ── TABLES ── */
+    table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 9.5pt; }
+    th {
+      background: #0f3460; color: #fff;
+      padding: 8px 12px; text-align: left; font-weight: 600;
+    }
+    td { padding: 7px 12px; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
+    tr:nth-child(even) td { background: #f5f7ff; }
+    td code { font-size: 8.5pt; }
+
+    /* ── STEPS ── */
+    .steps { counter-reset: step; list-style: none; margin: 16px 0; padding: 0; }
+    .steps li {
+      counter-increment: step;
+      display: flex;
+      gap: 14px;
+      margin-bottom: 16px;
+      align-items: flex-start;
+    }
+    .steps li::before {
+      content: counter(step);
+      background: #e94560;
+      color: #fff;
+      font-weight: 800;
+      font-size: 10pt;
+      min-width: 28px; height: 28px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    /* ── EXERCISE CARD ── */
+    .exercise {
+      border: 2px solid #0f3460;
+      border-radius: 10px;
+      margin: 28px 0;
+      overflow: hidden;
+    }
+    .exercise-header {
+      background: #0f3460;
+      color: #fff;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .exercise-header .ex-badge {
+      background: #e94560;
+      padding: 3px 12px;
+      border-radius: 12px;
+      font-size: 8pt;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .exercise-header h3 { color: #fff; margin: 0; font-size: 12pt; }
+    .exercise-body { padding: 20px 24px; }
+    .exercise-body .objetivo {
+      background: #f0f4f8; border-left: 4px solid #0f3460;
+      padding: 10px 14px; border-radius: 0 6px 6px 0;
+      margin-bottom: 16px; font-size: 10pt;
+    }
+    .exercise-body .objetivo strong { color: #0f3460; }
+
+    /* ── FLOW DIAGRAM ── */
+    .flow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 16px 0;
+      padding: 16px;
+      background: #f8f9ff;
+      border-radius: 8px;
+      border: 1px solid #dde;
+    }
+    .flow-node {
+      background: #0f3460; color: #fff;
+      padding: 8px 16px; border-radius: 20px;
+      font-size: 9pt; font-weight: 600;
+      text-align: center; min-width: 90px;
+    }
+    .flow-node.sensor { background: #16213e; }
+    .flow-node.logic  { background: #e94560; }
+    .flow-node.action { background: #2e7d32; }
+    .flow-node.debug  { background: #7b1fa2; }
+    .flow-arrow { color: #e94560; font-size: 14pt; font-weight: 700; }
+
+    /* ── SCENARIO CARD ── */
+    .scenario-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin: 16px 0; }
+    .sc-card {
+      border: 1px solid #dde;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .sc-card .sc-head {
+      padding: 10px 14px;
+      font-weight: 700; font-size: 10pt;
+      color: #fff;
+    }
+    .sc-card.greenhouse .sc-head { background: #2e7d32; }
+    .sc-card.garage     .sc-head { background: #1565c0; }
+    .sc-card.smarthome  .sc-head { background: #6a1b9a; }
+    .sc-card .sc-body { padding: 10px 14px; font-size: 9pt; }
+    .sc-card .sc-body ul { margin: 4px 0 0 14px; }
+    .sc-card .sc-body li { margin-bottom: 3px; }
+    .sc-tag {
+      display: inline-block;
+      padding: 1px 7px; border-radius: 10px;
+      font-size: 8pt; font-weight: 600; margin-right: 4px;
+    }
+    .tag-sensor { background: #e3f2fd; color: #1565c0; }
+    .tag-input  { background: #e8f5e9; color: #2e7d32; }
+    .tag-output { background: #fce4ec; color: #b71c1c; }
+
+    /* ── TOPIC PILL ── */
+    .topic {
+      display: inline-block;
+      background: #1a1a2e; color: #c3e88d;
+      font-family: "Cascadia Code", monospace;
+      font-size: 9pt;
+      padding: 3px 10px; border-radius: 14px;
+      margin: 2px;
+    }
+    .topic.sub { background: #16213e; color: #82aaff; }
+
+    /* ── API TABLE ── */
+    .method {
+      display: inline-block;
+      padding: 1px 8px; border-radius: 4px;
+      font-size: 8pt; font-weight: 700;
+    }
+    .get  { background: #e3f2fd; color: #1565c0; }
+    .post { background: #e8f5e9; color: #2e7d32; }
+
+    /* ── CHECKLIST ── */
+    .checklist { list-style: none; padding: 0; }
+    .checklist li {
+      padding: 6px 0 6px 28px;
+      position: relative;
+      border-bottom: 1px solid #eee;
+      font-size: 10pt;
+    }
+    .checklist li::before {
+      content: "☐";
+      position: absolute; left: 0;
+      color: #0f3460; font-size: 14pt; top: 2px;
+    }
+
+    /* ── FOOTER ── */
+    .doc-footer {
+      margin-top: 60px;
+      padding-top: 20px;
+      border-top: 2px solid #e94560;
+      text-align: center;
+      font-size: 9pt;
+      color: #888;
+    }
+
+    /* ── HINT BUTTON (screen only) ── */
+    .no-print { }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     PORTADA
+══════════════════════════════════════════════ -->
+<div class="cover">
+  <div class="badge">Trabajo Práctico de Laboratorio</div>
+  <h1>SimuPi</h1>
+  <div class="subtitle">Simulador de Raspberry Pi + Node-RED</div>
+  <div class="divider"></div>
+  <div class="meta">
+    <div><strong>Materia:</strong> Cloud Computing &amp; Cloud Robotics</div>
+    <div><strong>Unidad:</strong> IoT — Integración de sensores y actuadores</div>
+    <div><strong>Año:</strong> 2025</div>
+    <br/>
+    <div style="font-size:9pt; opacity:.6;">
+      Antes de trabajar con Raspberry Pi física + kit de sensores,<br/>
+      aprendemos a integrar sensores virtuales con flujos Node-RED.
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ══════════════════════════════════════════════
+     TABLA DE CONTENIDOS
+══════════════════════════════════════════════ -->
+<div class="toc-page page-break">
+  <h2>Tabla de Contenidos</h2>
+  <ul class="toc-list">
+    <li><span class="num">1</span> ¿Qué es SimuPi?<span class="dots"></span><span class="pg">3</span></li>
+    <li class="sub"><span class="num">·</span> Arquitectura general<span class="dots"></span><span class="pg">3</span></li>
+    <li class="sub"><span class="num">·</span> Relación con la Raspberry Pi física<span class="dots"></span><span class="pg">3</span></li>
+    <li><span class="num">2</span> Instalación y puesta en marcha<span class="dots"></span><span class="pg">4</span></li>
+    <li><span class="num">3</span> Interfaz web — Recorrido guiado<span class="dots"></span><span class="pg">5</span></li>
+    <li class="sub"><span class="num">·</span> Panel de GPIO<span class="dots"></span><span class="pg">5</span></li>
+    <li class="sub"><span class="num">·</span> Panel de sensores<span class="dots"></span><span class="pg">5</span></li>
+    <li class="sub"><span class="num">·</span> Escenarios precargados<span class="dots"></span><span class="pg">6</span></li>
+    <li><span class="num">4</span> Protocolo MQTT — Tópicos y mensajes<span class="dots"></span><span class="pg">7</span></li>
+    <li><span class="num">5</span> API REST de referencia<span class="dots"></span><span class="pg">8</span></li>
+    <li><span class="num">6</span> Integración con Node-RED<span class="dots"></span><span class="pg">9</span></li>
+    <li class="sub"><span class="num">·</span> Configurar el broker MQTT<span class="dots"></span><span class="pg">9</span></li>
+    <li class="sub"><span class="num">·</span> Flujo básico de lectura<span class="dots"></span><span class="pg">9</span></li>
+    <li class="sub"><span class="num">·</span> Flujo de control de actuador<span class="dots"></span><span class="pg">10</span></li>
+    <li><span class="num">7</span> Ejercicios prácticos<span class="dots"></span><span class="pg">11</span></li>
+    <li class="sub"><span class="num">·</span> Ejercicio 1 — Control de invernadero<span class="dots"></span><span class="pg">11</span></li>
+    <li class="sub"><span class="num">·</span> Ejercicio 2 — Alarma de garaje<span class="dots"></span><span class="pg">12</span></li>
+    <li class="sub"><span class="num">·</span> Ejercicio 3 — Simulación de falla<span class="dots"></span><span class="pg">13</span></li>
+    <li class="sub"><span class="num">·</span> Ejercicio 4 — Escenario propio<span class="dots"></span><span class="pg">14</span></li>
+    <li><span class="num">8</span> Checklist de entrega<span class="dots"></span><span class="pg">15</span></li>
+  </ul>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     1. QUÉ ES SIMUPI
+══════════════════════════════════════════════ -->
+<div class="page-break">
+  <div class="section-header">
+    <span class="sec-num">01</span><h2>¿Qué es SimuPi?</h2>
+  </div>
+  <div class="section-body">
+
+    <p>
+      <strong>SimuPi</strong> es un simulador de Raspberry Pi escrito en Go que genera datos realistas de sensores
+      y simula pines GPIO. Fue diseñado para que puedas desarrollar y probar flujos IoT
+      <em>sin necesidad de hardware físico</em>.
+    </p>
+
+    <div class="box box-info">
+      <div class="box-title">Objetivo del simulador en la materia</div>
+      En la práctica real usarán una Raspberry Pi 3 con sensores físicos (temperatura, humedad, distancia, etc.)
+      conectada a un broker MQTT. SimuPi reproduce <strong>exactamente el mismo protocolo MQTT y la misma API</strong>,
+      por lo que los flujos Node-RED que construyan hoy funcionarán sin cambios en el hardware real.
+    </div>
+
+    <h3>Arquitectura general</h3>
+    <p>SimuPi es un único binario que levanta tres servicios internos:</p>
+
+    <div class="flow">
+      <div class="flow-node sensor">Generador<br/>de señales</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">Broker MQTT<br/>:1883</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node logic">Node-RED<br/>/ Clientes</div>
+      <div class="flow-arrow">↔</div>
+      <div class="flow-node action">API REST<br/>:5000</div>
+      <div class="flow-arrow">↔</div>
+      <div class="flow-node debug">Web UI<br/>:5000</div>
+    </div>
+
+    <table>
+      <tr><th>Componente</th><th>Puerto</th><th>Función</th></tr>
+      <tr><td>Broker MQTT embebido</td><td><code>1883</code></td><td>Publica lecturas de sensores y recibe comandos GPIO</td></tr>
+      <tr><td>API REST</td><td><code>5000</code></td><td>Control programático: cargar escenarios, inyectar valores, simular fallas</td></tr>
+      <tr><td>Interfaz web</td><td><code>5000</code></td><td>Dashboard de visualización en tiempo real</td></tr>
+    </table>
+
+    <h3>Relación con la Raspberry Pi física</h3>
+    <p>La siguiente tabla muestra la equivalencia directa:</p>
+    <table>
+      <tr><th>En la Raspberry Pi real</th><th>En SimuPi</th></tr>
+      <tr><td>Sensor DHT22 (temperatura/humedad)</td><td>Sensor <code>temperature</code> / <code>humidity</code> — modo wave/walk</td></tr>
+      <tr><td>Sensor ultrasónico HC-SR04</td><td>Sensor <code>distance</code> — modo ramp</td></tr>
+      <tr><td>Pin GPIO de entrada (botón/reed)</td><td>GPIO Input — controlable desde la UI o API</td></tr>
+      <tr><td>Pin GPIO de salida (relé/LED)</td><td>GPIO Output — responde a mensajes MQTT <code>gpio/out/&lt;pin&gt;</code></td></tr>
+      <tr><td>Broker Mosquitto instalado en la Pi</td><td>Broker embebido en SimuPi (<code>:1883</code>)</td></tr>
+    </table>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     2. INSTALACIÓN Y PUESTA EN MARCHA
+══════════════════════════════════════════════ -->
+<div class="section-header">
+  <span class="sec-num">02</span><h2>Instalación y puesta en marcha</h2>
+</div>
+<div class="section-body">
+
+  <h3>Requisitos previos</h3>
+  <ul>
+    <li><strong>Go 1.24+</strong> instalado (<a href="https://go.dev/dl/">go.dev/dl</a>)</li>
+    <li><strong>Node-RED</strong> instalado (<code>npm install -g --unsafe-perm node-red</code>)</li>
+    <li>Puertos <code>1883</code> y <code>5000</code> libres en tu máquina</li>
+  </ul>
+
+  <h3>Compilar y ejecutar SimuPi</h3>
+  <ol class="steps">
+    <li>
+      <div>Clonar (o descomprimir) el repositorio:<br/>
+      <pre><code>git clone &lt;url-del-repo&gt; simupi-go
+cd simupi-go</code></pre></div>
+    </li>
+    <li>
+      <div>Compilar el binario:<br/>
+      <pre><code>go build -o simupi .</code></pre></div>
+    </li>
+    <li>
+      <div>Ejecutar:<br/>
+      <pre><code>./simupi          <span class="cm"># Linux / macOS</span>
+simupi.exe        <span class="cm"># Windows</span></code></pre></div>
+    </li>
+    <li>
+      <div>Abrir el dashboard en el navegador:<br/>
+      <pre><code>http://localhost:5000</code></pre></div>
+    </li>
+  </ol>
+
+  <div class="box box-tip">
+    <div class="box-title">Tip — Makefile</div>
+    El proyecto incluye un <code>Makefile</code>. En lugar de los pasos 2 y 3 podés ejecutar directamente <code>make run</code>.
+  </div>
+
+  <h3>Verificar que todo funciona</h3>
+  <p>En otra terminal, probá el endpoint de salud:</p>
+  <pre><code>curl http://localhost:5000/api/health
+<span class="st">{"status":"ok"}</span></code></pre>
+
+  <p>Si ves <code>{"status":"ok"}</code>, SimuPi está corriendo correctamente.</p>
+
+  <h3>Iniciar Node-RED</h3>
+  <pre><code>node-red          <span class="cm"># abre http://localhost:1880</span></code></pre>
+
+  <div class="box box-warning">
+    <div class="box-title">Atención — Orden de inicio</div>
+    Siempre iniciar SimuPi <strong>antes</strong> de Node-RED. El broker MQTT de SimuPi debe estar disponible
+    cuando Node-RED intente conectarse.
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     3. INTERFAZ WEB
+══════════════════════════════════════════════ -->
+<div class="section-header" style="margin-top:40px;">
+  <span class="sec-num">03</span><h2>Interfaz web — Recorrido guiado</h2>
+</div>
+<div class="section-body">
+
+  <p>Accedé a <code>http://localhost:5000</code> y verás el dashboard de SimuPi dividido en tres paneles principales.</p>
+
+  <h3>Panel de GPIO</h3>
+  <p>Hay dos tipos de pines:</p>
+
+  <table>
+    <tr><th>Tipo</th><th>Descripción</th><th>Cómo controlarlo</th></tr>
+    <tr>
+      <td><strong>GPIO Input</strong></td>
+      <td>Simula un sensor digital o botón. Valor: 0 ó 1.</td>
+      <td>Botón <em>Toggle</em> en la UI, API REST, o publicando en MQTT</td>
+    </tr>
+    <tr>
+      <td><strong>GPIO Output</strong></td>
+      <td>Simula un actuador (relé, LED, motor). Valor: 0 ó 1.</td>
+      <td>Publicando en MQTT <span class="topic sub">gpio/out/&lt;pin&gt;</span></td>
+    </tr>
+  </table>
+
+  <div class="box box-info">
+    <div class="box-title">Aliasas</div>
+    Los pines pueden tener nombre amigable. En el escenario Greenhouse, el pin 22 se llama <code>fan</code>
+    y el pin 24 se llama <code>pump</code>. Los alias se muestran en la UI y se pueden usar en los tópicos MQTT.
+  </div>
+
+  <h3>Panel de sensores</h3>
+  <p>Cada sensor muestra:</p>
+  <ul>
+    <li><strong>Valor actual</strong> con unidad (ej. <code>24.53 °C</code>)</li>
+    <li><strong>Modo</strong> de simulación (wave, walk, ramp, etc.)</li>
+    <li><strong>Estado de falla</strong> — si está activa, aparece <em>stuck</em> u <em>offline</em></li>
+    <li><strong>Override manual</strong> — campo para inyectar un valor específico</li>
+    <li><strong>Gráfico histórico</strong> — los últimos 500 valores en tiempo real</li>
+  </ul>
+
+  <h3>Modos de simulación disponibles</h3>
+  <table>
+    <tr><th>Modo</th><th>Comportamiento</th><th>Ejemplo de uso</th></tr>
+    <tr><td><code>wave</code></td><td>Senoide entre min y max con período configurable</td><td>Temperatura ambiente día/noche</td></tr>
+    <tr><td><code>walk</code></td><td>Variación aleatoria ±step desde el valor actual</td><td>Humedad con fluctuaciones</td></tr>
+    <tr><td><code>triangle</code></td><td>Rampa lineal subida/bajada periódica</td><td>Nivel de tanque llenándose</td></tr>
+    <tr><td><code>sawtooth</code></td><td>Rampa que sube y vuelve a cero abruptamente</td><td>Contador de ciclos</td></tr>
+    <tr><td><code>square</code></td><td>Alterna entre min y max con duty cycle</td><td>Señal digital periódica</td></tr>
+    <tr><td><code>ramp</code></td><td>Escalones discretos sube/baja</td><td>Distancia con objeto moviéndose</td></tr>
+    <tr><td><code>random</code></td><td>Valor uniforme aleatorio sin continuidad</td><td>Consumo eléctrico instantáneo</td></tr>
+  </table>
+
+  <h3>Escenarios precargados</h3>
+  <p>Seleccioná el escenario desde el <em>dropdown</em> en la parte superior del dashboard. El cambio es inmediato, sin reiniciar.</p>
+
+  <div class="scenario-grid">
+    <div class="sc-card greenhouse">
+      <div class="sc-head">🌿 Greenhouse</div>
+      <div class="sc-body">
+        <span class="sc-tag tag-sensor">Sensores</span>
+        <ul>
+          <li>temperature (wave, 15–40 °C)</li>
+          <li>humidity (walk, 30–90 %)</li>
+        </ul>
+        <span class="sc-tag tag-output">Salidas</span>
+        <ul>
+          <li>GPIO 22 → <em>fan</em></li>
+          <li>GPIO 24 → <em>pump</em></li>
+        </ul>
+      </div>
+    </div>
+    <div class="sc-card garage">
+      <div class="sc-head">🚗 Garage</div>
+      <div class="sc-body">
+        <span class="sc-tag tag-sensor">Sensores</span>
+        <ul>
+          <li>distance (ramp, 10–400 cm)</li>
+        </ul>
+        <span class="sc-tag tag-output">Salidas</span>
+        <ul>
+          <li>GPIO 22 → <em>door</em></li>
+          <li>GPIO 24 → <em>light</em></li>
+        </ul>
+      </div>
+    </div>
+    <div class="sc-card smarthome">
+      <div class="sc-head">🏠 Smart Home</div>
+      <div class="sc-body">
+        <span class="sc-tag tag-sensor">Sensores</span>
+        <ul>
+          <li>temperature (wave, 18–30 °C)</li>
+          <li>power (random, 100–2500 W)</li>
+        </ul>
+        <span class="sc-tag tag-output">Salidas</span>
+        <ul>
+          <li>GPIO 22 → <em>living_light</em></li>
+          <li>GPIO 24 → <em>heater</em></li>
+          <li>GPIO 25 → <em>alarm</em></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <h3>Tabs del dashboard</h3>
+  <table>
+    <tr><th>Tab</th><th>Contenido</th></tr>
+    <tr><td><strong>Histórico</strong></td><td>Gráfico Chart.js del sensor seleccionado, actualizado en tiempo real</td></tr>
+    <tr><td><strong>Topics MQTT</strong></td><td>Lista de todos los tópicos con botón de copia para usar en Node-RED</td></tr>
+    <tr><td><strong>Estado del sistema</strong></td><td>Dump JSON completo del estado interno (útil para depuración)</td></tr>
+  </table>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     4. MQTT
+══════════════════════════════════════════════ -->
+<div class="section-header" style="margin-top:40px;">
+  <span class="sec-num">04</span><h2>Protocolo MQTT — Tópicos y mensajes</h2>
+</div>
+<div class="section-body">
+
+  <p>
+    SimuPi incluye un <strong>broker MQTT embebido</strong> en el puerto <code>1883</code>.
+    No necesitás instalar Mosquitto ni ningún broker externo.
+  </p>
+
+  <h3>Tópicos publicados por SimuPi (SimuPi → Node-RED)</h3>
+  <table>
+    <tr><th>Tópico</th><th>Payload</th><th>Ejemplo</th></tr>
+    <tr>
+      <td><span class="topic">sensor/&lt;nombre&gt;</span></td>
+      <td>Número flotante como string, 2 decimales</td>
+      <td><code>"24.53"</code></td>
+    </tr>
+    <tr>
+      <td><span class="topic">gpio/in/&lt;pin&gt;</span></td>
+      <td>String <code>"0"</code> o <code>"1"</code></td>
+      <td><code>"1"</code></td>
+    </tr>
+  </table>
+
+  <h3>Tópicos suscritos por SimuPi (Node-RED → SimuPi)</h3>
+  <table>
+    <tr><th>Tópico</th><th>Payload</th><th>Efecto</th></tr>
+    <tr>
+      <td><span class="topic sub">gpio/out/&lt;pin&gt;</span></td>
+      <td>String <code>"0"</code> o <code>"1"</code></td>
+      <td>Cambia el estado del GPIO output en el dashboard</td>
+    </tr>
+  </table>
+
+  <h3>Ejemplos de tópicos por escenario</h3>
+  <table>
+    <tr><th>Escenario</th><th>Tópicos de lectura</th><th>Tópicos de escritura</th></tr>
+    <tr>
+      <td>Greenhouse</td>
+      <td>
+        <span class="topic">sensor/temperature</span><br/>
+        <span class="topic">sensor/humidity</span><br/>
+        <span class="topic">gpio/in/17</span>
+      </td>
+      <td>
+        <span class="topic sub">gpio/out/22</span> (fan)<br/>
+        <span class="topic sub">gpio/out/24</span> (pump)
+      </td>
+    </tr>
+    <tr>
+      <td>Garage</td>
+      <td>
+        <span class="topic">sensor/distance</span><br/>
+        <span class="topic">gpio/in/17</span>
+      </td>
+      <td>
+        <span class="topic sub">gpio/out/22</span> (door)<br/>
+        <span class="topic sub">gpio/out/24</span> (light)
+      </td>
+    </tr>
+    <tr>
+      <td>Smart Home</td>
+      <td>
+        <span class="topic">sensor/temperature</span><br/>
+        <span class="topic">sensor/power</span>
+      </td>
+      <td>
+        <span class="topic sub">gpio/out/22</span> (living_light)<br/>
+        <span class="topic sub">gpio/out/24</span> (heater)<br/>
+        <span class="topic sub">gpio/out/25</span> (alarm)
+      </td>
+    </tr>
+  </table>
+
+  <div class="box box-tip">
+    <div class="box-title">Wildcard MQTT</div>
+    Para suscribirse a <strong>todos los sensores</strong> de una vez en Node-RED, usá el tópico
+    <span class="topic">sensor/#</span>. El campo <code>msg.topic</code> te dirá cuál sensor envió el mensaje.
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     5. API REST
+══════════════════════════════════════════════ -->
+<div class="section-header" style="margin-top:40px;">
+  <span class="sec-num">05</span><h2>API REST de referencia</h2>
+</div>
+<div class="section-body">
+
+  <p>Todos los endpoints tienen base <code>http://localhost:5000</code>.</p>
+
+  <table>
+    <tr><th>Método</th><th>Endpoint</th><th>Descripción</th></tr>
+    <tr>
+      <td><span class="method get">GET</span></td>
+      <td><code>/api/health</code></td>
+      <td>Verificar que SimuPi está corriendo</td>
+    </tr>
+    <tr>
+      <td><span class="method get">GET</span></td>
+      <td><code>/api/state</code></td>
+      <td>Estado completo: GPIO, sensores, modos, fallas, aliases</td>
+    </tr>
+    <tr>
+      <td><span class="method get">GET</span></td>
+      <td><code>/api/scenarios</code></td>
+      <td>Lista de escenarios disponibles</td>
+    </tr>
+    <tr>
+      <td><span class="method post">POST</span></td>
+      <td><code>/api/scenarios/load/{nombre}</code></td>
+      <td>Cargar un escenario (ej. <code>greenhouse</code>)</td>
+    </tr>
+    <tr>
+      <td><span class="method post">POST</span></td>
+      <td><code>/api/gpio/{pin}</code></td>
+      <td>Setear pin de entrada. Body: <code>{"value": 1}</code></td>
+    </tr>
+    <tr>
+      <td><span class="method post">POST</span></td>
+      <td><code>/api/gpio/{pin}/toggle</code></td>
+      <td>Invertir valor del pin (0→1 ó 1→0)</td>
+    </tr>
+    <tr>
+      <td><span class="method post">POST</span></td>
+      <td><code>/api/gpio/{pin}/pulse</code></td>
+      <td>Pulso HIGH durante N segundos. Body: <code>{"duration": 0.5}</code></td>
+    </tr>
+    <tr>
+      <td><span class="method post">POST</span></td>
+      <td><code>/api/sensor/{nombre}</code></td>
+      <td>Inyectar valor manual. Body: <code>{"value": 25.0}</code></td>
+    </tr>
+    <tr>
+      <td><span class="method post">POST</span></td>
+      <td><code>/api/failure/{sensor}</code></td>
+      <td>Simular falla. Body: <code>{"mode": "stuck"}</code> o <code>{"mode": "offline"}</code></td>
+    </tr>
+    <tr>
+      <td><span class="method post">POST</span></td>
+      <td><code>/api/failure/{sensor}</code></td>
+      <td>Limpiar falla. Body: <code>{"mode": "clear"}</code></td>
+    </tr>
+    <tr>
+      <td><span class="method get">GET</span></td>
+      <td><code>/api/history/{sensor}</code></td>
+      <td>Historial de lecturas (últimas 500)</td>
+    </tr>
+    <tr>
+      <td><span class="method get">GET</span></td>
+      <td><code>/api/export/{sensor}</code></td>
+      <td>Descargar historial como CSV</td>
+    </tr>
+    <tr>
+      <td><span class="method post">POST</span></td>
+      <td><code>/api/config/save/{nombre}</code></td>
+      <td>Guardar configuración actual como nuevo escenario</td>
+    </tr>
+  </table>
+
+  <h3>Ejemplo con curl</h3>
+  <pre><code><span class="cm"># Inyectar temperatura de 35 °C manualmente</span>
+curl -X POST http://localhost:5000/api/sensor/temperature \
+     -H "Content-Type: application/json" \
+     -d <span class="st">'{"value": 35.0}'</span>
+
+<span class="cm"># Simular falla en el sensor de humedad</span>
+curl -X POST http://localhost:5000/api/failure/humidity \
+     -H "Content-Type: application/json" \
+     -d <span class="st">'{"mode": "stuck"}'</span>
+
+<span class="cm"># Cargar el escenario Greenhouse</span>
+curl -X POST http://localhost:5000/api/scenarios/load/greenhouse</code></pre>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     6. NODE-RED
+══════════════════════════════════════════════ -->
+<div class="section-header" style="margin-top:40px;">
+  <span class="sec-num">06</span><h2>Integración con Node-RED</h2>
+</div>
+<div class="section-body">
+
+  <h3>Configurar el broker MQTT en Node-RED</h3>
+  <ol class="steps">
+    <li>Abrí Node-RED en <code>http://localhost:1880</code></li>
+    <li>Arrastrá un nodo <strong>mqtt in</strong> al canvas</li>
+    <li>Hacé doble clic → "Add new mqtt-broker…" → <strong>Editar</strong></li>
+    <li>Completá los campos:
+      <table style="margin-top:8px;">
+        <tr><th>Campo</th><th>Valor</th></tr>
+        <tr><td>Server</td><td><code>localhost</code></td></tr>
+        <tr><td>Port</td><td><code>1883</code></td></tr>
+        <tr><td>Client ID</td><td><code>nodered-simupi</code> (o cualquier nombre)</td></tr>
+      </table>
+    </li>
+    <li>Click en <strong>Add</strong> y luego <strong>Done</strong></li>
+  </ol>
+
+  <h3>Flujo básico — Leer temperatura y mostrarla</h3>
+
+  <div class="flow">
+    <div class="flow-node sensor">mqtt in<br/><small>sensor/temperature</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node debug">debug<br/><small>msg.payload</small></div>
+  </div>
+
+  <ol class="steps">
+    <li>Arrastrá un nodo <strong>mqtt in</strong>. Tópico: <code>sensor/temperature</code></li>
+    <li>Arrastrá un nodo <strong>debug</strong></li>
+    <li>Conectá la salida del <code>mqtt in</code> a la entrada del <code>debug</code></li>
+    <li>Click en <strong>Deploy</strong></li>
+    <li>En el panel de Debug (derecha) verás los valores llegando cada 1 segundo</li>
+  </ol>
+
+  <div class="box box-tip">
+    <div class="box-title">Convertir el payload a número</div>
+    SimuPi envía el valor como string (<code>"24.53"</code>). Para operar matemáticamente,
+    usá un nodo <strong>function</strong> con: <code>msg.payload = parseFloat(msg.payload);</code>
+  </div>
+
+  <h3>Flujo de control — Activar ventilador según temperatura</h3>
+
+  <div class="flow">
+    <div class="flow-node sensor">mqtt in<br/><small>sensor/temperature</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node logic">function<br/><small>parseFloat</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node logic">switch<br/><small>&gt; 28°C</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node action">mqtt out<br/><small>gpio/out/22</small></div>
+  </div>
+
+  <ol class="steps">
+    <li>
+      <div>Nodo <strong>function</strong> — convertir y preparar payload:
+      <pre><code><span class="kw">var</span> temp = parseFloat(msg.payload);
+msg.payload = temp > <span class="nm">28</span> ? <span class="st">"1"</span> : <span class="st">"0"</span>;
+<span class="kw">return</span> msg;</code></pre></div>
+    </li>
+    <li>
+      <div>Nodo <strong>mqtt out</strong>:
+      <ul>
+        <li>Tópico: <code>gpio/out/22</code></li>
+        <li>QoS: 0</li>
+        <li>Broker: el mismo que configuraste antes</li>
+      </ul>
+      </div>
+    </li>
+    <li>Conectar: <code>mqtt in</code> → <code>function</code> → <code>mqtt out</code></li>
+    <li>Click en <strong>Deploy</strong></li>
+    <li>En SimuPi, observá el LED del GPIO 22 encenderse cuando temperatura &gt; 28 °C</li>
+  </ol>
+
+  <h3>Nodos útiles de Node-RED para este práctico</h3>
+  <table>
+    <tr><th>Nodo</th><th>Uso típico</th></tr>
+    <tr><td><code>mqtt in</code></td><td>Suscribirse a tópicos de SimuPi</td></tr>
+    <tr><td><code>mqtt out</code></td><td>Publicar comandos a GPIO output</td></tr>
+    <tr><td><code>function</code></td><td>Lógica JavaScript personalizada</td></tr>
+    <tr><td><code>switch</code></td><td>Rutar mensajes según valor del payload</td></tr>
+    <tr><td><code>change</code></td><td>Setear/transformar valores del mensaje</td></tr>
+    <tr><td><code>debug</code></td><td>Ver mensajes en el panel lateral</td></tr>
+    <tr><td><code>inject</code></td><td>Disparar manualmente un mensaje de prueba</td></tr>
+    <tr><td><code>delay</code></td><td>Agregar tiempo entre acciones</td></tr>
+    <tr><td><code>http request</code></td><td>Llamar a la API REST de SimuPi</td></tr>
+    <tr><td><code>ui_gauge</code> / <code>ui_chart</code></td><td>Dashboard visual (requiere node-red-dashboard)</td></tr>
+  </table>
+
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     7. EJERCICIOS
+══════════════════════════════════════════════ -->
+<div class="section-header page-break" style="margin-top:40px;">
+  <span class="sec-num">07</span><h2>Ejercicios Prácticos</h2>
+</div>
+<div class="section-body">
+
+<!-- EJERCICIO 1 -->
+<div class="exercise">
+  <div class="exercise-header">
+    <span class="ex-badge">Ejercicio 1</span>
+    <h3>Control automático de invernadero</h3>
+  </div>
+  <div class="exercise-body">
+    <div class="objetivo">
+      <strong>Objetivo:</strong> Construir un sistema de control para un invernadero que encienda
+      el ventilador cuando la temperatura sea alta y active la bomba de riego cuando la humedad sea baja.
+    </div>
+
+    <strong>Escenario:</strong> Cargar <code>greenhouse</code> en SimuPi.
+
+    <h4>Especificación del sistema</h4>
+    <table>
+      <tr><th>Condición</th><th>Acción</th></tr>
+      <tr><td>Temperatura &gt; 28 °C</td><td>Encender ventilador (GPIO 22 = 1)</td></tr>
+      <tr><td>Temperatura ≤ 28 °C</td><td>Apagar ventilador (GPIO 22 = 0)</td></tr>
+      <tr><td>Humedad &lt; 50 %</td><td>Activar bomba de riego (GPIO 24 = 1)</td></tr>
+      <tr><td>Humedad ≥ 50 %</td><td>Apagar bomba de riego (GPIO 24 = 0)</td></tr>
+    </table>
+
+    <h4>Flujo esperado en Node-RED</h4>
+    <div class="flow">
+      <div class="flow-node sensor">sensor/<br/>temperature</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node logic">Lógica<br/>fan</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node action">gpio/out/22</div>
+    </div>
+    <div class="flow" style="margin-top:8px;">
+      <div class="flow-node sensor">sensor/<br/>humidity</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node logic">Lógica<br/>pump</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node action">gpio/out/24</div>
+    </div>
+
+    <h4>Tareas</h4>
+    <ol>
+      <li>Crear el flujo de control descripto arriba.</li>
+      <li>Agregar nodos <code>debug</code> para registrar cada vez que el ventilador o la bomba cambian de estado.</li>
+      <li>Usando la API REST, inyectá manualmente temperatura = 35 °C y verificá que el ventilador se encienda. Luego inyectá 20 °C y verificá que se apague.</li>
+      <li>Exportar el flujo como JSON (<em>Menu → Export → Clipboard</em>) e incluirlo en el informe.</li>
+    </ol>
+
+    <h4>Código de referencia para el nodo function (ventilador)</h4>
+    <pre><code><span class="kw">var</span> temp = parseFloat(msg.payload);
+msg.topic = <span class="st">"gpio/out/22"</span>;
+msg.payload = temp > <span class="nm">28</span> ? <span class="st">"1"</span> : <span class="st">"0"</span>;
+<span class="kw">return</span> msg;</code></pre>
+
+    <div class="box box-warning">
+      <div class="box-title">Consideración de diseño</div>
+      Con este esquema simple, el sistema envía un mensaje MQTT <em>en cada lectura</em> del sensor aunque el estado no cambie.
+      ¿Cómo podrías modificar el flujo para publicar solo cuando el estado <strong>cambia</strong>?
+      (Pista: usá <code>context.get()</code> / <code>context.set()</code> en el nodo function).
+    </div>
+  </div>
+</div>
+
+<!-- EJERCICIO 2 -->
+<div class="exercise" style="margin-top:28px;">
+  <div class="exercise-header">
+    <span class="ex-badge">Ejercicio 2</span>
+    <h3>Sistema de detección y alerta de garaje</h3>
+  </div>
+  <div class="exercise-body">
+    <div class="objetivo">
+      <strong>Objetivo:</strong> Implementar un sistema que detecte la presencia de un vehículo
+      y controle la puerta y la luz del garaje según la distancia medida.
+    </div>
+
+    <strong>Escenario:</strong> Cargar <code>garage</code> en SimuPi.
+
+    <h4>Especificación del sistema</h4>
+    <table>
+      <tr><th>Condición</th><th>Acción</th></tr>
+      <tr><td>Distancia &lt; 80 cm (vehículo cerca)</td><td>Encender luz (GPIO 24 = 1)</td></tr>
+      <tr><td>Distancia ≥ 80 cm (sin vehículo)</td><td>Apagar luz (GPIO 24 = 0)</td></tr>
+      <tr><td>Distancia &lt; 30 cm (demasiado cerca)</td><td>Abrir puerta (GPIO 22 = 1) y enviar alerta al debug</td></tr>
+      <tr><td>Distancia ≥ 30 cm</td><td>Cerrar puerta (GPIO 22 = 0)</td></tr>
+    </table>
+
+    <h4>Flujo esperado en Node-RED</h4>
+    <div class="flow">
+      <div class="flow-node sensor">sensor/<br/>distance</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node logic">switch<br/>zonas</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node action">gpio/out/22<br/>gpio/out/24</div>
+    </div>
+
+    <h4>Tareas</h4>
+    <ol>
+      <li>Construir el flujo con un nodo <code>switch</code> que separe los tres rangos de distancia.</li>
+      <li>Agregar un nodo <code>function</code> que construya un mensaje de alerta con timestamp cuando la distancia sea menor a 30 cm. Ejemplo:
+      <pre><code>msg.payload = {
+    <span class="tp">alerta</span>: <span class="st">"vehiculo_muy_cerca"</span>,
+    <span class="tp">distancia</span>: parseFloat(msg.payload),
+    <span class="tp">timestamp</span>: <span class="kw">new</span> Date().toISOString()
+};
+<span class="kw">return</span> msg;</code></pre></li>
+      <li>Usando la UI de SimuPi, activar manualmente GPIO Input 17 (podría representar un botón de apertura manual) y verificar que el estado cambia en el dashboard.</li>
+      <li>Documentar con capturas de pantalla el comportamiento del flujo ante distintos valores de distancia.</li>
+    </ol>
+  </div>
+</div>
+
+<!-- EJERCICIO 3 -->
+<div class="exercise" style="margin-top:28px;">
+  <div class="exercise-header">
+    <span class="ex-badge">Ejercicio 3</span>
+    <h3>Detección y manejo de fallas de sensores</h3>
+  </div>
+  <div class="exercise-body">
+    <div class="objetivo">
+      <strong>Objetivo:</strong> Diseñar un sistema robusto que detecte cuando un sensor deja de funcionar
+      correctamente y active una alerta, diferenciando entre falla tipo <em>stuck</em> (valor congelado) y <em>offline</em> (sin datos).
+    </div>
+
+    <strong>Escenario:</strong> Cargar <code>greenhouse</code> en SimuPi.
+
+    <h4>Tipos de falla a simular</h4>
+    <table>
+      <tr><th>Tipo</th><th>Comportamiento</th><th>Cómo activarla</th></tr>
+      <tr>
+        <td><code>stuck</code></td>
+        <td>El sensor sigue enviando mensajes MQTT, pero el valor nunca cambia</td>
+        <td>
+          <code>POST /api/failure/temperature {"mode": "stuck"}</code><br/>
+          o desde la API REST en Node-RED
+        </td>
+      </tr>
+      <tr>
+        <td><code>offline</code></td>
+        <td>El sensor deja de publicar mensajes MQTT completamente</td>
+        <td>
+          <code>POST /api/failure/temperature {"mode": "offline"}</code>
+        </td>
+      </tr>
+    </table>
+
+    <h4>Lógica de detección</h4>
+    <p>Para detectar falla <strong>stuck</strong>:</p>
+    <pre><code><span class="cm">// En un nodo function con contexto de flujo</span>
+<span class="kw">var</span> current = parseFloat(msg.payload);
+<span class="kw">var</span> last = flow.get(<span class="st">"lastTemp"</span>) || <span class="nm">0</span>;
+<span class="kw">var</span> sameCount = flow.get(<span class="st">"sameCount"</span>) || <span class="nm">0</span>;
+
+<span class="kw">if</span> (Math.abs(current - last) < <span class="nm">0.01</span>) {
+    sameCount++;
+} <span class="kw">else</span> {
+    sameCount = <span class="nm">0</span>;
+}
+flow.set(<span class="st">"lastTemp"</span>, current);
+flow.set(<span class="st">"sameCount"</span>, sameCount);
+
+<span class="kw">if</span> (sameCount > <span class="nm">10</span>) {
+    msg.payload = <span class="st">"ALERTA: sensor temperature posiblemente stuck"</span>;
+    <span class="kw">return</span> msg;
+}
+<span class="kw">return null</span>;</code></pre>
+
+    <p>Para detectar falla <strong>offline</strong>, usá un nodo <code>trigger</code> que se resetee con cada mensaje y dispare una alerta si no recibe datos en 10 segundos.</p>
+
+    <h4>Tareas</h4>
+    <ol>
+      <li>Construir el flujo de detección de falla tipo <em>stuck</em> para el sensor de temperatura.</li>
+      <li>Agregar detección de falla tipo <em>offline</em> usando el nodo <code>trigger</code>.</li>
+      <li>Cuando se detecte una falla, publicar un mensaje en el tópico MQTT <code>alertas/sensores</code> con el tipo de falla y el timestamp.</li>
+      <li>Activar cada tipo de falla desde la API REST y verificar que las alertas se generan correctamente.</li>
+      <li>Implementar la lógica para <em>limpiar</em> la falla (<code>{"mode": "clear"}</code>) y verificar que el sistema vuelve a la normalidad.</li>
+    </ol>
+
+    <div class="box box-info">
+      <div class="box-title">Reflexión</div>
+      En sistemas IoT reales, la detección de fallas de sensores es crítica.
+      ¿Qué impacto tendría una falla tipo <em>stuck</em> no detectada en el sistema de invernadero del Ejercicio 1?
+      Describir el escenario en el informe.
+    </div>
+  </div>
+</div>
+
+<!-- EJERCICIO 4 -->
+<div class="exercise" style="margin-top:28px;">
+  <div class="exercise-header">
+    <span class="ex-badge">Ejercicio 4 — Integrador</span>
+    <h3>Diseño de escenario propio</h3>
+  </div>
+  <div class="exercise-body">
+    <div class="objetivo">
+      <strong>Objetivo:</strong> Diseñar, configurar y documentar un escenario IoT propio que combine
+      al menos dos sensores, un actuador controlado por lógica y un mecanismo de alerta.
+    </div>
+
+    <h4>Propuestas sugeridas (elegir una o proponer la propia)</h4>
+    <table>
+      <tr><th>Propuesta</th><th>Sensores</th><th>Actuadores</th></tr>
+      <tr><td>Tanque de agua inteligente</td><td>Nivel (triangle), temperatura (wave)</td><td>Bomba de llenado, alarma de desborde</td></tr>
+      <tr><td>Sala de servidores</td><td>Temperatura (wave), consumo eléctrico (random)</td><td>Ventilación extra, alertas de consumo</td></tr>
+      <tr><td>Estacionamiento</td><td>Distancia (ramp), contador (sawtooth)</td><td>Barrera, señal de ocupación</td></tr>
+      <tr><td>Sistema de riego agrícola</td><td>Humedad suelo (walk), temperatura (wave)</td><td>Riego por zonas, bomba principal</td></tr>
+    </table>
+
+    <h4>Pasos para crear el escenario</h4>
+    <ol class="steps">
+      <li>
+        <div>Abrir el <strong>editor de configuración</strong> en la UI de SimuPi (ícono de engranaje)</div>
+      </li>
+      <li>
+        <div>Definir el JSON del escenario. Ejemplo:
+        <pre><code>{
+  <span class="tp">"inputs"</span>: [<span class="nm">17</span>, <span class="nm">18</span>],
+  <span class="tp">"outputs"</span>: [<span class="nm">22</span>, <span class="nm">24</span>],
+  <span class="tp">"aliases"</span>: {<span class="st">"22"</span>: <span class="st">"bomba"</span>, <span class="st">"24"</span>: <span class="st">"alarma"</span>},
+  <span class="tp">"sensors"</span>: {
+    <span class="tp">"nivel"</span>: {
+      <span class="st">"mode"</span>: <span class="st">"triangle"</span>, <span class="st">"min"</span>: <span class="nm">0</span>, <span class="st">"max"</span>: <span class="nm">100</span>,
+      <span class="st">"interval"</span>: <span class="nm">1</span>, <span class="st">"period"</span>: <span class="nm">120</span>, <span class="st">"unit"</span>: <span class="st">"%"</span>
+    },
+    <span class="tp">"temperatura"</span>: {
+      <span class="st">"mode"</span>: <span class="st">"wave"</span>, <span class="st">"min"</span>: <span class="nm">10</span>, <span class="st">"max"</span>: <span class="nm">35</span>,
+      <span class="st">"interval"</span>: <span class="nm">2</span>, <span class="st">"period"</span>: <span class="nm">90</span>, <span class="st">"unit"</span>: <span class="st">"°C"</span>
+    }
+  }
+}</code></pre></div>
+      </li>
+      <li>
+        <div>Click en <strong>Guardar como escenario</strong> con un nombre identificatorio (ej. <code>mi_tanque</code>)</div>
+      </li>
+      <li>
+        <div>Construir en Node-RED el flujo de control para el escenario diseñado</div>
+      </li>
+    </ol>
+
+    <h4>Requisitos mínimos del flujo Node-RED</h4>
+    <ul>
+      <li>Leer <strong>todos los sensores</strong> del escenario</li>
+      <li>Implementar al menos <strong>una regla de control</strong> (if/then) que active un GPIO output</li>
+      <li>Generar <strong>alertas</strong> (en debug o tópico MQTT propio) ante condiciones críticas</li>
+      <li>Incluir manejo de falla de al menos un sensor</li>
+    </ul>
+
+    <h4>Entregables del ejercicio 4</h4>
+    <ul>
+      <li>JSON del escenario SimuPi creado</li>
+      <li>JSON del flujo Node-RED exportado</li>
+      <li>Capturas de pantalla del dashboard SimuPi y Node-RED funcionando</li>
+      <li>Descripción de la lógica implementada (1 página máximo)</li>
+    </ul>
+  </div>
+</div>
+
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     8. CHECKLIST DE ENTREGA
+══════════════════════════════════════════════ -->
+<div class="section-header" style="margin-top:40px;">
+  <span class="sec-num">08</span><h2>Checklist de entrega</h2>
+</div>
+<div class="section-body">
+  <p>Antes de entregar el trabajo práctico, verificar que todos los ítems estén completos:</p>
+
+  <h3>Ejercicio 1 — Invernadero</h3>
+  <ul class="checklist">
+    <li>Flujo Node-RED funcionando con control de ventilador y bomba</li>
+    <li>Prueba con valores inyectados via API REST (capturas de pantalla)</li>
+    <li>JSON del flujo exportado</li>
+    <li>Respuesta a la pregunta de diseño sobre mensajes innecesarios</li>
+  </ul>
+
+  <h3>Ejercicio 2 — Garaje</h3>
+  <ul class="checklist">
+    <li>Flujo con tres zonas de distancia correctamente implementado</li>
+    <li>Mensaje de alerta con timestamp funcionando</li>
+    <li>Prueba con GPIO Input 17 activado desde la UI</li>
+    <li>Capturas de pantalla del comportamiento</li>
+  </ul>
+
+  <h3>Ejercicio 3 — Fallas de sensores</h3>
+  <ul class="checklist">
+    <li>Detección de falla stuck con umbral de 10 lecturas iguales</li>
+    <li>Detección de falla offline con timeout de 10 segundos</li>
+    <li>Alertas publicadas en tópico MQTT <code>alertas/sensores</code></li>
+    <li>Lógica de recuperación (clear) implementada</li>
+    <li>Reflexión escrita sobre impacto en el sistema del Ejercicio 1</li>
+  </ul>
+
+  <h3>Ejercicio 4 — Escenario propio</h3>
+  <ul class="checklist">
+    <li>JSON del escenario SimuPi creado y guardado</li>
+    <li>Flujo Node-RED con regla de control, alertas y manejo de fallas</li>
+    <li>JSON del flujo Node-RED exportado</li>
+    <li>Capturas de pantalla del sistema funcionando</li>
+    <li>Descripción de la lógica implementada</li>
+  </ul>
+
+  <h3>Formato del informe</h3>
+  <ul>
+    <li>Un único PDF por grupo con secciones claramente identificadas</li>
+    <li>Código incluido en bloques, no como imagen</li>
+    <li>Capturas de pantalla con anotaciones indicando qué se muestra</li>
+    <li>Archivos JSON adjuntos en un ZIP junto al PDF</li>
+  </ul>
+
+  <div class="box box-tip">
+    <div class="box-title">Tip para el informe</div>
+    Para exportar un flujo Node-RED: <em>Menú (☰) → Export → Current flow → Copy to clipboard</em>,
+    luego pegarlo en un archivo <code>.json</code>. Para importar el flujo de un compañero:
+    <em>Menú → Import → Clipboard</em>.
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════
+     FOOTER
+══════════════════════════════════════════════ -->
+<div class="doc-footer">
+  <p>SimuPi — Simulador de Raspberry Pi &nbsp;|&nbsp; Cloud Computing &amp; Cloud Robotics</p>
+  <p style="margin-top:4px;">Para consultas técnicas del simulador: ver <code>README.md</code> del repositorio</p>
+</div>
+
+</div><!-- /container -->
+
+<!-- ══ Print hint (visible on screen only) ══ -->
+<div class="no-print" style="
+  position: fixed; bottom: 20px; right: 20px;
+  background: #0f3460; color: #fff;
+  padding: 10px 18px; border-radius: 8px;
+  font-size: 10pt; font-family: sans-serif;
+  box-shadow: 0 4px 12px rgba(0,0,0,.3);
+  cursor: pointer;
+" onclick="window.print()">
+  🖨️ Imprimir / Guardar como PDF
+</div>
+
+</body>
+</html>
