@@ -1,16 +1,37 @@
-# SimuPi Go
+# SimuPi
 
 Simulador de Raspberry Pi para IoT escrito en Go. Genera datos de sensores, simula pines GPIO y expone un broker MQTT embebido — todo en un único binario sin dependencias externas ni Docker.
 
-Es el port en Go del proyecto original [simupi](../simupi) (Python/Flask/Docker).
+---
+
+## Descarga rápida
+
+Los binarios precompilados están disponibles en [Releases](https://github.com/seguren/simupi/releases/latest) — no requieren tener Go instalado.
+
+| Plataforma | Archivo |
+|------------|---------|
+| Linux x86-64 | `simupi-linux-amd64` |
+| Windows x86-64 | `simupi-windows-amd64.exe` |
+
+```bash
+# Linux
+chmod +x simupi-linux-amd64
+./simupi-linux-amd64
+
+# Windows (PowerShell)
+.\simupi-windows-amd64.exe
+```
+
+Luego abrir **http://localhost:5000** en el navegador. El broker MQTT queda disponible en **localhost:1883**.
 
 ---
 
 ## Características
 
 - **Broker MQTT embebido** (mochi-mqtt): no requiere Mosquitto ni ningún broker externo
-- **Sensores simulados** con siete modos: `wave`, `square`, `triangle`, `sawtooth`, `ramp`, `walk` y `random`
+- **8 modos de simulación de señal**: `wave`, `square`, `triangle`, `sawtooth`, `ramp`, `walk`, `random` y `slider`
 - **GPIO inputs y outputs** simulados, controlables desde la UI o vía MQTT
+- **Override manual** de sensores con botón Fijar/Liberar — congela el valor sin afectar la configuración
 - **Simulación de fallos** por sensor: `stuck` (valor congelado) u `offline` (deja de publicar)
 - **UI web** incluida en el binario con `//go:embed`
 - **Persistencia de estado** entre reinicios (escritura atómica con rename)
@@ -19,31 +40,25 @@ Es el port en Go del proyecto original [simupi](../simupi) (Python/Flask/Docker)
 
 ---
 
-## Requisitos
+## Compilar desde el código fuente
 
-- Go 1.24+
+### Requisitos
+
+- Go 1.27+
 
 ```bash
-# Verificar versión
-go version
+go version   # verificar
 ```
 
----
-
-## Compilar y ejecutar
+### Compilar y ejecutar
 
 ```bash
-# Clonar / entrar al directorio
 cd simupi-go
 
-# Compilar
 go build -o simupi .
 
-# Ejecutar
 ./simupi
 ```
-
-El servidor arranca en `http://localhost:5000` y el broker MQTT en `localhost:1883`.
 
 ### Variables de entorno
 
@@ -51,9 +66,7 @@ El servidor arranca en `http://localhost:5000` y el broker MQTT en `localhost:18
 |----------|---------|-------------|
 | `PORT`   | `5000`  | Puerto HTTP |
 
----
-
-## Makefile
+### Makefile
 
 ```bash
 make build    # binario local ./simupi (sistema actual)
@@ -66,22 +79,13 @@ make tidy     # go mod tidy
 make clean    # elimina ./simupi y dist/
 ```
 
----
-
-## Cross-compilación manual
+### Cross-compilación manual
 
 ```bash
-# Linux (amd64)
-GOOS=linux  GOARCH=amd64 go build -o simupi-linux .
-
-# Windows
+GOOS=linux   GOARCH=amd64 go build -o simupi-linux .
 GOOS=windows GOARCH=amd64 go build -o simupi.exe .
-
-# macOS (Apple Silicon)
 GOOS=darwin  GOARCH=arm64 go build -o simupi-darwin .
 ```
-
-El binario resultante incluye la UI, los escenarios por defecto y el broker MQTT. No necesita nada instalado en el sistema destino.
 
 ---
 
@@ -91,6 +95,11 @@ El binario resultante incluye la UI, los escenarios por defecto y el broker MQTT
 simupi-go/
 ├── main.go                   # Punto de entrada: wireup de todos los componentes
 ├── go.mod / go.sum
+├── bin/                      # Binarios precompilados para distribución
+│   ├── simupi-linux-amd64
+│   └── simupi-windows-amd64.exe
+├── docs/                     # Documentación para alumnos
+│   └── tutorial_simupi_nodered.html
 ├── web/
 │   ├── static/
 │   │   ├── app.js            # Frontend (embebido en el binario)
@@ -112,7 +121,7 @@ simupi-go/
     ├── gpio/
     │   └── gpio.go           # GPIOManager (sync.RWMutex, Toggle, Pulse)
     ├── sensor/
-    │   └── engine.go         # SensorEngine: goroutine por sensor, modos, failures
+    │   └── engine.go         # SensorEngine: goroutine por sensor, 8 modos, overrides, failures
     ├── history/
     │   └── history.go        # Buffer circular (500 entradas por sensor)
     ├── mqtt/
@@ -175,9 +184,9 @@ Los escenarios definen qué sensores y pines GPIO simular. Se pueden cargar desd
 
 El simulador funciona como un generador de señales configurable. Cada sensor puede usar un modo distinto de forma independiente.
 
-#### Modos periódicos (generador de señales)
+#### Modos periódicos
 
-Todos usan el campo `period` (duración de un ciclo completo en segundos, default `60`).
+Usan el campo `period` (duración de un ciclo completo en segundos, default `60`).
 
 | Modo | Forma de onda | Parámetros extra |
 |------|--------------|-----------------|
@@ -186,56 +195,30 @@ Todos usan el campo `period` (duración de un ciclo completo en segundos, defaul
 | `triangle` | **Triangular** — sube y baja linealmente de forma simétrica | `period` |
 | `sawtooth` | **Diente de sierra** — sube linealmente de `min` a `max` y reinicia | `period` |
 
-El campo `duty` (solo para `square`) es la fracción del período en estado alto, entre `0.0` y `1.0`. Por defecto es `0.5` (señal simétrica).
-
-```json
-// Onda cuadrada: 10s en MAX, 2s en MIN (duty = 10/12 ≈ 0.83)
-"presencia": { "mode": "square", "min": 0, "max": 1, "period": 12, "duty": 0.83, "interval": 1 }
-
-// Triangular con período de 30 segundos
-"nivel": { "mode": "triangle", "min": 0, "max": 100, "period": 30, "interval": 1, "unit": "%" }
-
-// Diente de sierra: simula llenado continuo de un tanque
-"caudal": { "mode": "sawtooth", "min": 0, "max": 50, "period": 20, "interval": 1, "unit": "L/min" }
-```
+El campo `duty` (solo para `square`) es la fracción del período en estado alto, entre `0.0` y `1.0`. Por defecto `0.5`.
 
 #### Modos estocásticos
 
 | Modo | Descripción | Parámetros extra |
 |------|-------------|-----------------|
-| `walk` | **Caminata aleatoria** — cada tick el valor cambia ±`step` desde el valor anterior. Variación suave y continua | `step` (default: `(max-min)/20`) |
+| `walk` | **Caminata aleatoria** — cada tick el valor cambia ±`step` desde el valor anterior | `step` (default: `(max-min)/20`) |
 | `ramp` | **Rampa escalonada** — sube y baja en pasos fijos de `(max-min)/20` | — |
 | `random` | **Aleatorio uniforme** — salta sin continuidad entre `min` y `max` en cada tick | — |
 
-El campo `step` (solo para `walk`) define cuánto puede cambiar el valor por tick como máximo. Un `step` pequeño produce variaciones muy suaves; uno grande produce cambios más bruscos pero siempre continuos.
+#### Modo manual
+
+| Modo | Descripción |
+|------|-------------|
+| `slider` | **Control manual** — la UI muestra un slider entre `min` y `max`; el valor publicado es exactamente el que el usuario elige. Inicia en el punto medio. |
 
 ```json
-// Humedad que varía suavemente ±2% por segundo
-"humedad": { "mode": "walk", "min": 30, "max": 90, "step": 2, "interval": 1, "unit": "%" }
+// Sensor controlado manualmente por el usuario
+"setpoint": { "mode": "slider", "min": 0, "max": 100, "interval": 1, "unit": "°C" }
 ```
 
-#### Escenario con múltiples formas de onda
+#### Campo `pin` (opcional)
 
-```json
-{
-  "name": "Laboratorio",
-  "inputs": [17, 18],
-  "outputs": [22, 24],
-  "aliases": { "22": "alarma", "24": "ventilador" },
-  "sensors": {
-    "temperatura":  { "mode": "wave",     "min": 18, "max": 30, "period": 60,  "interval": 1, "unit": "°C" },
-    "humedad":      { "mode": "walk",     "min": 40, "max": 80, "step": 1.5,   "interval": 1, "unit": "%" },
-    "presencia":    { "mode": "square",   "min": 0,  "max": 1,  "period": 10,  "duty": 0.3,   "interval": 1 },
-    "nivel_tanque": { "mode": "sawtooth", "min": 0,  "max": 100,"period": 120, "interval": 1, "unit": "%" },
-    "vibracion":    { "mode": "triangle", "min": 0,  "max": 5,  "period": 30,  "interval": 1, "unit": "g" },
-    "ruido":        { "mode": "random",   "min": 30, "max": 90, "interval": 2, "unit": "dB" }
-  }
-}
-```
-
-### Campo `pin` (opcional)
-
-El campo `pin` en un sensor es **solo metadato** — indica a qué pin físico de la Raspberry Pi se conectaría el sensor real (I2C, 1-Wire, SPI). No afecta la simulación.
+El campo `pin` en un sensor es **solo metadato** — indica a qué pin físico de la Raspberry Pi se conectaría el sensor real. No afecta la simulación.
 
 ---
 
@@ -247,14 +230,14 @@ El broker corre embebido en el proceso en el puerto `1883`. Se puede conectar cu
 
 | Tópico | Contenido | Ejemplo |
 |--------|-----------|---------|
-| `sensor/<nombre>` | Valor del sensor como float con 2 decimales | `sensor/temperature` → `24.53` |
-| `gpio/in/<pin>` | Estado del pin de entrada (0 o 1) | `gpio/in/17` → `1` |
+| `sensor/<nombre>` | Valor del sensor como float con 2 decimales | `sensor/temperature` → `"24.53"` |
+| `gpio/in/<pin>` | Estado del pin de entrada (0 o 1) | `gpio/in/17` → `"1"` |
 
 ### Tópicos suscritos por el simulador
 
 | Tópico | Acción | Ejemplo payload |
 |--------|--------|-----------------|
-| `gpio/out/<pin>` | Setea el pin de salida al valor recibido | `0` o `1` |
+| `gpio/out/<pin>` | Setea el pin de salida al valor recibido | `"0"` o `"1"` |
 
 ---
 
@@ -267,7 +250,7 @@ Base URL: `http://localhost:5000`
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
 | `GET` | `/api/health` | Estado del servidor |
-| `GET` | `/api/state` | Estado completo en tiempo real |
+| `GET` | `/api/state` | Estado completo (sensores, GPIO, fallos, overrides, límites) |
 
 ### Escenarios
 
@@ -277,25 +260,13 @@ Base URL: `http://localhost:5000`
 | `GET` | `/api/scenarios/{name}` | Definición de un escenario |
 | `POST` | `/api/scenarios/load/{name}` | Carga un escenario en caliente |
 
-### Configuración (editor en la UI)
+### Configuración
 
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
 | `GET` | `/api/config` | Configuración activa (sensores, pines, aliases) |
-| `POST` | `/api/config/apply` | Aplica nueva config sin guardar |
+| `POST` | `/api/config/apply` | Aplica nueva config sin guardar en disco |
 | `POST` | `/api/config/save/{name}` | Guarda config como nuevo escenario y lo aplica |
-
-Body para `apply` y `save`:
-```json
-{
-  "inputs":  [17, 18],
-  "outputs": [22, 24],
-  "aliases": { "22": "ventilador" },
-  "sensors": {
-    "temperatura": { "mode": "wave", "min": 15, "max": 40, "interval": 1, "period": 60, "unit": "°C" }
-  }
-}
-```
 
 ### GPIO
 
@@ -309,7 +280,7 @@ Body para `apply` y `save`:
 // POST /api/gpio/{pin}
 { "value": 1 }
 
-// POST /api/gpio/{pin}/pulse  (duration en segundos, opcional)
+// POST /api/gpio/{pin}/pulse  (duration en segundos, default 0.5)
 { "duration": 0.5 }
 ```
 
@@ -317,11 +288,15 @@ Body para `apply` y `save`:
 
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
-| `POST` | `/api/sensor/{name}` | Fija el valor de un sensor manualmente |
+| `POST` | `/api/sensor/{name}` | Fija el valor manualmente (override — bypasa el algoritmo) |
+| `DELETE` | `/api/sensor/{name}` | Libera el override y retoma la simulación normal |
 
 ```json
+// POST /api/sensor/{name}
 { "value": 25.0 }
 ```
+
+> **Nota:** para sensores en modo `slider` el `POST` actualiza el valor directamente (sin crear override). Para todos los demás modos el `POST` activa un override que congela el valor hasta que se llame `DELETE`.
 
 ### Fallos
 
@@ -330,7 +305,7 @@ Body para `apply` y `save`:
 | `POST` | `/api/failure/{sensor}` | Activa o limpia un modo de fallo |
 
 ```json
-{ "mode": "stuck" }   // valor congelado
+{ "mode": "stuck" }   // valor congelado (sigue publicando)
 { "mode": "offline" } // deja de publicar
 { "mode": "clear" }   // vuelve a la simulación normal
 ```
@@ -347,21 +322,9 @@ Body para `apply` y `save`:
 
 ## Persistencia
 
-Al iniciar, el simulador intenta cargar `data/state.json` para restaurar el último estado conocido (valores de sensores, estado de pines, fallos activos). El estado se guarda automáticamente cada 5 segundos mediante escritura atómica (archivo temporal + rename POSIX).
+Al iniciar, el simulador carga `data/state.json` para restaurar el último estado (valores de sensores, estado de pines, fallos activos, overrides manuales). El estado se guarda automáticamente cada 5 segundos mediante escritura atómica (archivo `.tmp` + rename POSIX).
 
 Los escenarios guardados por el usuario se almacenan en `data/scenarios/` y persisten entre reinicios.
-
----
-
-## Diferencias con la versión Python
-
-| Aspecto | Python (simupi) | Go (simupi-go) |
-|---------|-----------------|----------------|
-| Runtime | Python 3.11 + Gunicorn | Binario estático |
-| Broker MQTT | Mosquitto (Docker) | Embebido (mochi-mqtt) |
-| Dependencias externas | Docker Compose | Ninguna |
-| Concurrencia | Threads + GIL | Goroutines nativas |
-| Distribución | Imagen Docker | Ejecutable único |
 
 ---
 
