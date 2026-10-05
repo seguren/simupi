@@ -141,11 +141,18 @@ Restricción: `min < max` obligatorio en todo sensor.
 ```
 data/state.json          # estado persistido (GPIO, sensores, failures, overrides)
 data/scenarios/*.json    # escenarios creados por el usuario
-simupi                   # binario compilado
-dist/                    # binarios cross-compilados
+simupi                   # binario compilado (raíz)
+dist/                    # binarios cross-compilados por Makefile
 ```
 
-El `.gitignore` debería excluir `data/` y `dist/`.
+El `.gitignore` debería excluir `data/`, `dist/` y el binario raíz `simupi`.
+
+`bin/` contiene los ejecutables distribuibles para alumnos y **sí se commitea**:
+
+```
+bin/simupi-linux-amd64        # Linux x86-64
+bin/simupi-windows-amd64.exe  # Windows x86-64
+```
 
 ## Documentación para alumnos
 
