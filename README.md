@@ -40,6 +40,18 @@ Luego abrir **http://localhost:5000** en el navegador. El broker MQTT queda disp
 
 ---
 
+## Documentación
+
+El directorio `docs/` contiene el tutorial completo para alumnos:
+
+| Archivo | Contenido |
+|---------|-----------|
+| [`docs/tutorial_simupi_nodered.html`](docs/tutorial_simupi_nodered.html) | Tutorial paso a paso: uso del simulador, integración con Node-RED y 4 ejercicios prácticos |
+
+Para generar el PDF: abrí el archivo en el navegador → **Imprimir → Guardar como PDF** (activar "Gráficos de fondo").
+
+---
+
 ## Compilar desde el código fuente
 
 ### Requisitos
